@@ -53,7 +53,7 @@
       title: 'Paused',
       body: `<p>World ${g.world + 1}: ${BB.WORLDS[g.world].name}<br>Score: <b>${g.score}</b> / ${g.goal}</p>`,
       buttons: [
-        { label: '▶ Resume', primary: true, action: resume },
+        { label: 'Resume', primary: true, action: resume },
         { label: 'Quit to home', action: () => { stop(); BB.goHome(); } },
       ],
       dismissable: false,
@@ -74,7 +74,7 @@
     const w = BB.WORLDS[g.world];
     const el = document.createElement('div');
     el.className = 'world-intro';
-    el.innerHTML = `<small>World ${g.world + 1}</small><b>${w.name}</b><span>Get ${g.goal} points!</span>`;
+    el.innerHTML = `<small>World ${g.world + 1}</small><b>${w.name}</b><span>Target: ${g.goal} points</span>`;
     arena.appendChild(el);
     setTimeout(() => el.remove(), 1900);
   }
@@ -149,6 +149,7 @@
       age: 0,
       life: rand(c.life[0], c.life[1]),
     };
+    t.coin = !t.trick && Math.random() < BB.COIN_CHANCE;
 
     if (t.type === 'wave') {
       t.amp = rand(25, 70) * scale;
@@ -164,10 +165,10 @@
     }
 
     const el = document.createElement('div');
-    el.className = 'target' + (t.trick ? ' trick' : '');
+    el.className = 'target' + (t.trick ? ' trick' : '') + (t.coin ? ' coin-target' : '');
     el.style.width = el.style.height = size + 'px';
     el.style.transform = `translate(${x - r}px, ${y - r}px)`;
-    el.innerHTML = `<div class="target-inner">${t.trick ? `<div class="face"><img src="${g.face}" alt="" draggable="false"></div>` : ''}</div>`;
+    el.innerHTML = `<div class="target-inner">${t.trick ? `<div class="face"><img src="${g.face}" alt="" draggable="false"></div>` : ''}${t.coin ? '<span class="coin"></span>' : ''}</div>`;
     el.addEventListener('pointerdown', e => {
       e.preventDefault();
       e.stopPropagation();
@@ -204,12 +205,14 @@
       void arena.offsetWidth; // restart the animation
       arena.classList.add('shake');
     } else {
-      g.score++;
-      BB.state.coins++;
+      // Coin bullseyes are worth the world's bonus, in both points and coins.
+      const pts = t.coin ? BB.WORLDS[g.world].bonus : 1;
+      g.score += pts;
+      BB.state.coins += pts;
       BB.state.stats.hits++;
-      BB.sfx.hit();
-      floatText(t.x, t.y, '+1', 'good');
-      burst(t.x, t.y);
+      if (t.coin) BB.sfx.coin(); else BB.sfx.hit();
+      floatText(t.x, t.y, '+' + pts, t.coin ? 'gold' : 'good');
+      burst(t.x, t.y, t.coin);
     }
     BB.save();
     updateHud();
@@ -220,7 +223,7 @@
     g.running = false;
     BB.sfx.lose();
     stop();
-    BB.goHome('💥 You hit your own face with 0 points! Back to the home page. Your unlocked worlds are still saved.');
+    BB.goHome('You hit a decoy with 0 points, so the run is over. Your unlocked worlds are still saved.');
   }
 
   function worldComplete() {
@@ -239,17 +242,17 @@
     const diffLabel = BB.DIFFICULTIES[diff].label;
     if (last) {
       BB.modal({
-        title: '🏆 You beat Bullseye Blitz!',
-        body: `<p>You cleared all 5 worlds on <b>${diffLabel}</b>!</p><p class="reward">+${reward} coins</p>`,
+        title: 'All worlds cleared',
+        body: `<p>You cleared all 5 worlds on <b>${diffLabel}</b>.</p><p class="reward">+${reward} coins</p>`,
         buttons: [{ label: 'Home', primary: true, action: () => { stop(); BB.goHome(); } }],
         dismissable: false,
       });
     } else {
       BB.modal({
-        title: `World ${world + 1} cleared! 🎯`,
+        title: `World ${world + 1} cleared`,
         body: `<p>Next up: <b>World ${world + 2}: ${BB.WORLDS[world + 1].name}</b><br>Your score starts again from 0.</p><p class="reward">+${reward} coins</p>`,
         buttons: [
-          { label: 'Next world ▶', primary: true, action: () => BB.startGame(world + 1) },
+          { label: 'Next world', primary: true, action: () => BB.startGame(world + 1) },
           { label: 'Home', action: () => { stop(); BB.goHome(); } },
         ],
         dismissable: false,
@@ -275,7 +278,7 @@
     setTimeout(() => el.remove(), 800);
   }
 
-  function burst(x, y) {
+  function burst(x, y, gold) {
     for (let i = 0; i < 10; i++) {
       const el = document.createElement('div');
       const a = (i / 10) * Math.PI * 2;
@@ -285,7 +288,7 @@
       el.style.top = y + 'px';
       el.style.setProperty('--dx', Math.cos(a) * d + 'px');
       el.style.setProperty('--dy', Math.sin(a) * d + 'px');
-      el.style.background = i % 2 ? '#ff4757' : '#f9ca24';
+      el.style.background = gold ? (i % 2 ? '#d4a72c' : '#fff4c7') : (i % 2 ? '#e5484d' : '#f2f2f2');
       arena.appendChild(el);
       setTimeout(() => el.remove(), 600);
     }

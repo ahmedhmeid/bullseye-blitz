@@ -46,6 +46,14 @@
   BB.closeModal = function () { modal.hidden = true; };
 
   // ---------- Setup ----------
+  function openSetup() {
+    setupGender = null;
+    $('#setup-name').value = '';
+    $('#setup-cancel').hidden = !BB.currentPlayerId();
+    renderSetup();
+    BB.showScreen('setup');
+  }
+
   function renderSetup() {
     $('#prev-male').innerHTML = BB.renderAvatar(BB.defaultAvatar('male'));
     $('#prev-female').innerHTML = BB.renderAvatar(BB.defaultAvatar('female'));
@@ -55,9 +63,8 @@
 
   function finishSetup() {
     const name = $('#setup-name').value.trim().slice(0, 16) || 'Player';
-    S().profile = { name, gender: setupGender };
-    S().avatar = BB.defaultAvatar(setupGender);
-    BB.save();
+    BB.createPlayer(name, setupGender);
+    selectedWorld = null;
     BB.goHome();
   }
 
@@ -90,7 +97,7 @@
     $('#diff-row').innerHTML = BB.DIFFICULTY_ORDER.map(key => {
       const d = BB.DIFFICULTIES[key];
       return `<button class="diff-btn ${key === diff ? 'active' : ''} diff-${key}" data-diff="${key}">
-        <b>${d.label}${st.beaten[key] ? ' 🏆' : ''}</b><small>${d.blurb}</small></button>`;
+        <b>${d.label}${st.beaten[key] ? ' <span class="done">✓</span>' : ''}</b><small>${d.blurb}</small></button>`;
     }).join('');
 
     $('#world-list').innerHTML = BB.WORLDS.map((w, i) => {
@@ -98,7 +105,7 @@
       const locked = n > unlocked;
       const cleared = n < unlocked || (n === BB.WORLDS.length && st.beaten[diff]);
       return `<button class="world-card w${n} ${locked ? 'locked' : ''} ${n === selectedWorld ? 'active' : ''}" data-world="${n}" ${locked ? 'disabled' : ''}>
-        <span class="world-num">${locked ? '🔒' : cleared ? '⭐' : n}</span>
+        <span class="world-num">${locked ? '—' : cleared ? '✓' : n}</span>
         <span class="world-info"><b>${w.name}</b><small>Goal ${BB.goalFor(i, diff).toLocaleString()} pts · Reward ${w.reward.toLocaleString()} coins</small></span>
       </button>`;
     }).join('');
@@ -116,24 +123,57 @@
       body: `
         <div class="help">
           <div class="help-row"><span class="mini-target"></span><p><b>Tap or click bullseyes</b> before they disappear. Each one is <b>+1 point</b> and <b>+1 coin</b>.</p></div>
-          <div class="help-row"><span class="mini-target trick"><span class="face"><img src="${BB.avatarDataUrl(S().avatar)}" alt=""></span></span><p><b>Watch out!</b> Bullseyes with <b>your avatar's face</b> are tricks, so hitting one is <b>−1 point</b>. If you hit one with <b>0 points</b>, you go back to the home page.</p></div>
-          <p>Reach the goal to clear the world. Your score starts from 0 again in every new world. Clearing a world gives <b>100 coins</b>, and World 5 gives <b>1000</b>!</p>
+          <div class="help-row"><span class="mini-target trick"><span class="face"><img src="${BB.avatarDataUrl(S().avatar)}" alt=""></span></span><p><b>Decoys:</b> bullseyes with <b>your avatar's face</b> are tricks, so hitting one is <b>−1 point</b>. If you hit one with <b>0 points</b>, you go back to the home page.</p></div>
+          <p>Reach the goal to clear the world. Your score starts from 0 again in every new world. Clearing a world gives <b>100 coins</b>, and World 5 gives <b>1000</b>.</p>
           <p>Spend coins in the <b>Avatar Shop</b> on hair, outfits, hats and more.</p>
           <div class="table-wrap"><table><thead><tr><th>Points needed</th>${BB.WORLDS.map((w, i) => `<th>W${i + 1}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>
         </div>`,
-      buttons: [{ label: 'Got it!', primary: true }],
+      buttons: [{ label: 'Got it', primary: true }],
     });
   }
 
   function confirmReset() {
     BB.modal({
-      title: 'Reset everything?',
-      body: '<p>This deletes your coins, items, avatar and world progress on this device. You can\'t undo it.</p>',
+      title: `Delete ${escapeHtml(S().profile.name)}?`,
+      body: '<p>This deletes this player\'s coins, items, avatar and world progress on this device. Other players aren\'t affected. You can\'t undo it.</p>',
       buttons: [
-        { label: 'Keep my progress', primary: true },
-        { label: 'Reset', action: () => { BB.resetSave(); setupGender = null; $('#setup-name').value = ''; renderSetup(); BB.showScreen('setup'); } },
+        { label: 'Keep player', primary: true },
+        { label: 'Delete', action: () => {
+          selectedWorld = null;
+          if (BB.deleteCurrentPlayer()) BB.goHome();
+          else openSetup();
+        } },
       ],
     });
+  }
+
+  // ---------- Players & leaderboard ----------
+  function showPlayers() {
+    const current = BB.currentPlayerId();
+    const ranked = BB.listPlayers().sort((a, b) =>
+      (BB.worldsCleared(b.state) - BB.worldsCleared(a.state)) || (b.state.stats.hits - a.state.stats.hits));
+    const rows = ranked.map((p, i) => `
+      <button class="player-row ${p.id === current ? 'current' : ''}" data-player="${p.id}">
+        <span class="rank">${i + 1}</span>
+        <span class="player-face"><img src="${BB.avatarDataUrl(p.state.avatar)}" alt=""></span>
+        <span class="player-info"><b>${escapeHtml(p.state.profile.name)}</b><small>${p.id === current ? 'Playing now' : 'Tap to switch'}</small></span>
+        <span class="player-stat"><b>${BB.worldsCleared(p.state)}</b><small>worlds</small></span>
+        <span class="player-stat"><b>${p.state.stats.hits.toLocaleString()}</b><small>hits</small></span>
+      </button>`).join('');
+    BB.modal({
+      title: 'Players',
+      body: `<p class="muted">Ranked by worlds cleared across all difficulties, then total bullseyes hit. Everyone here plays on this device.</p><div class="player-list">${rows}</div>`,
+      buttons: [
+        { label: 'Add player', primary: true, action: openSetup },
+        { label: 'Close' },
+      ],
+    });
+    document.querySelectorAll('#modal-body [data-player]').forEach(el => el.addEventListener('click', () => {
+      BB.sfx.click();
+      BB.switchPlayer(el.dataset.player);
+      selectedWorld = null;
+      BB.goHome();
+    }));
   }
 
   // ---------- Shop ----------
@@ -150,11 +190,11 @@
 
     const cat = BB.CATEGORIES.find(c => c.key === shopTab);
     $('#shop-grid').innerHTML = BB.ITEMS[shopTab].map(item => {
-      const preview = Object.assign({}, st.avatar, { [shopTab]: item.id });
+      const preview = BB.withItem(st.avatar, shopTab, item.id);
       const owned = BB.isOwned(shopTab, item.id);
-      const equipped = st.avatar[shopTab] === item.id;
+      const equipped = BB.isWearing(st.avatar, shopTab, item.id);
       let status;
-      if (equipped) status = '<span class="status equipped">✔ Wearing</span>';
+      if (equipped) status = '<span class="status equipped">Wearing</span>';
       else if (owned) status = `<span class="status owned">${item.price === 0 ? 'Free' : 'Owned'}</span>`;
       else status = coinTag(item.price);
       const cls = ['item-card', equipped && 'equipped', !owned && st.coins < item.price && 'cant-afford'].filter(Boolean).join(' ');
@@ -171,7 +211,7 @@
     if (!item) return;
 
     if (BB.isOwned(shopTab, id)) {
-      st.avatar[shopTab] = id;
+      st.avatar = BB.toggleItem(st.avatar, shopTab, id);
       BB.save();
       BB.sfx.click();
       renderShop();
@@ -182,7 +222,7 @@
       BB.sfx.nope();
       BB.modal({
         title: 'Not enough coins',
-        body: `<p><b>${item.name}</b> costs ${coinTag(item.price)}.<br>You need <b>${(item.price - st.coins).toLocaleString()}</b> more coins. Go hit some bullseyes!</p>`,
+        body: `<p><b>${item.name}</b> costs ${coinTag(item.price)}.<br>You need <b>${(item.price - st.coins).toLocaleString()}</b> more coins.</p>`,
         buttons: [{ label: 'OK', primary: true }],
       });
       return;
@@ -190,13 +230,13 @@
 
     BB.modal({
       title: `Buy ${item.name}?`,
-      body: `<div class="buy-preview">${BB.renderAvatar(Object.assign({}, st.avatar, { [shopTab]: id }))}</div>
+      body: `<div class="buy-preview">${BB.renderAvatar(BB.withItem(st.avatar, shopTab, id))}</div>
         <p>Price: ${coinTag(item.price)}<br>You'll have <b>${(st.coins - item.price).toLocaleString()}</b> coins left.</p>`,
       buttons: [
         { label: 'Buy & wear', primary: true, action: () => {
           st.coins -= item.price;
           st.owned.push(shopTab + ':' + id);
-          st.avatar[shopTab] = id;
+          st.avatar = BB.withItem(st.avatar, shopTab, id);
           BB.save();
           BB.sfx.buy();
           renderShop();
@@ -214,6 +254,8 @@
       renderSetup();
     }));
     $('#setup-go').addEventListener('click', finishSetup);
+    $('#setup-cancel').addEventListener('click', () => BB.goHome());
+    $('#btn-players').addEventListener('click', () => { BB.sfx.click(); showPlayers(); });
     $('#setup-name').addEventListener('keydown', e => { if (e.key === 'Enter' && setupGender) finishSetup(); });
 
     $('#diff-row').addEventListener('click', e => {
@@ -267,8 +309,7 @@
     if (S().profile && S().avatar) {
       BB.goHome();
     } else {
-      renderSetup();
-      BB.showScreen('setup');
+      openSetup();
     }
   }
 

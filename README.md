@@ -15,20 +15,20 @@ A tap-and-click target game that runs entirely in your browser. There's no serve
 
 | Difficulty  | W1  | W2  | W3  | W4  | W5   |
 |-------------|-----|-----|-----|-----|------|
-| Easy        | 100 | 200 | 300 | 400 | 1000 |
-| Medium      | 200 | 300 | 400 | 500 | 1100 |
-| Hard        | 300 | 400 | 500 | 600 | 1200 |
-| Impossible  | 400 | 500 | 600 | 700 | 1300 |
+| Easy        | 50  | 75  | 100 | 150 | 200  |
+| Medium      | 150 | 175 | 200 | 250 | 300  |
+| Hard        | 250 | 275 | 300 | 350 | 400  |
+| Impossible  | 350 | 375 | 400 | 450 | 500  |
 
 Higher difficulties also make targets faster, shorter-lived and more often tricks.
 
 ### Worlds
 
-1. Sunny Meadow
-2. Desert Dunes
-3. Deep Ocean
-4. Frozen Peaks
-5. Outer Space
+1. The Hot Sahara
+2. Underwater Adventures
+3. Computer Crazies
+4. Astronomy Adventure
+5. Football Fans
 
 Unlocked worlds are saved per difficulty, so you can pick up from the furthest world you've reached.
 
