@@ -6,20 +6,20 @@ BB.GAME_NAME = 'Bullseye Blitz';
 // `extra` is added to every world's goal. Easy uses the base goals.
 BB.DIFFICULTIES = {
   easy:       { label: 'Easy',       extra: 0,   speed: 1,    life: 1,    move: 0,    trick: 0,    blurb: 'Warm-up pace' },
-  medium:     { label: 'Medium',     extra: 0,   speed: 1.15, life: 0.9,  move: 0.05, trick: 0.03, blurb: 'Quicker targets' },
-  hard:       { label: 'Hard',       extra: 0,   speed: 1.3,  life: 0.8,  move: 0.1,  trick: 0.06, blurb: 'Fast, more decoys' },
-  impossible: { label: 'Impossible', extra: 0,   speed: 1.55, life: 0.68, move: 0.15, trick: 0.1,  blurb: 'Relentless' },
+  medium:     { label: 'Medium',     extra: 10,  speed: 1.15, life: 0.9,  move: 0.05, trick: 0.03, blurb: 'Quicker targets' },
+  hard:       { label: 'Hard',       extra: 20,  speed: 1.3,  life: 0.8,  move: 0.1,  trick: 0.06, blurb: 'Fast, more decoys' },
+  impossible: { label: 'Impossible', extra: 35,  speed: 1.55, life: 0.68, move: 0.15, trick: 0.1,  blurb: 'Relentless' },
 };
 BB.DIFFICULTY_ORDER = ['easy', 'medium', 'hard', 'impossible'];
 
 // Score resets at the start of every world; reach `goal` to clear it.
 // `bonus` is what a rare coin bullseye is worth (in points and coins).
 BB.WORLDS = [
-  { name: 'The Hot Sahara',        goal: 1,    reward: 100,  bonus: 2,   spawn: 900, max: 4, life: [2600, 3600], move: 0.25, speed: [50, 100],  size: [80, 130], trick: 0.15, patterns: ['bounce'] },
-  { name: 'Underwater Adventures', goal: 1,    reward: 100,  bonus: 5,   spawn: 800, max: 5, life: [2300, 3200], move: 0.4,  speed: [70, 130],  size: [70, 120], trick: 0.2,  patterns: ['bounce', 'wave'] },
-  { name: 'Computer Crazies',      goal: 1,    reward: 100,  bonus: 10,  spawn: 700, max: 6, life: [2000, 2900], move: 0.55, speed: [90, 160],  size: [60, 115], trick: 0.25, patterns: ['bounce', 'wave', 'orbit'] },
-  { name: 'Astronomy Adventure',   goal: 1,    reward: 100,  bonus: 15,  spawn: 620, max: 7, life: [1800, 2600], move: 0.65, speed: [110, 190], size: [52, 105], trick: 0.3,  patterns: ['bounce', 'wave', 'orbit'] },
-  { name: 'Football Fans',         goal: 1,    reward: 1000, bonus: 100, spawn: 540, max: 8, life: [1600, 2300], move: 0.8,  speed: [130, 240], size: [44, 100], trick: 0.35, patterns: ['bounce', 'wave', 'orbit'] },
+  { name: 'The Hot Sahara',        goal: 25,   reward: 100,  bonus: 2,   spawn: 900, max: 4, life: [2600, 3600], move: 0.25, speed: [50, 100],  size: [80, 130], trick: 0.15, patterns: ['bounce'] },
+  { name: 'Underwater Adventures', goal: 40,   reward: 100,  bonus: 5,   spawn: 800, max: 5, life: [2300, 3200], move: 0.4,  speed: [70, 130],  size: [70, 120], trick: 0.2,  patterns: ['bounce', 'wave'] },
+  { name: 'Computer Crazies',      goal: 60,   reward: 100,  bonus: 10,  spawn: 700, max: 6, life: [2000, 2900], move: 0.55, speed: [90, 160],  size: [60, 115], trick: 0.25, patterns: ['bounce', 'wave', 'orbit'] },
+  { name: 'Astronomy Adventure',   goal: 80,   reward: 100,  bonus: 15,  spawn: 620, max: 7, life: [1800, 2600], move: 0.65, speed: [110, 190], size: [52, 105], trick: 0.3,  patterns: ['bounce', 'wave', 'orbit'] },
+  { name: 'Football Fans',         goal: 100,  reward: 1000, bonus: 100, spawn: 540, max: 8, life: [1600, 2300], move: 0.8,  speed: [130, 240], size: [44, 100], trick: 0.35, patterns: ['bounce', 'wave', 'orbit'] },
 ];
 
 // Chance that a (non-decoy) target spawns as a coin bullseye.
