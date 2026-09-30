@@ -5,6 +5,9 @@
   const BODY_VIEW = '0 14 200 262';
   const HEAD_VIEW = '36 -16 128 128';
   const HEAD_SCALE = 'translate(100 106) scale(.8) translate(-100 -106)';
+  // Body is drawn at full width, then narrowed about the centre line for a slimmer build.
+  const SLIM = 0.88;
+  const slim = inner => `<g transform="translate(100 0) scale(${SLIM} 1) translate(-100 0)">${inner}</g>`;
   const INK = '#1f2227';
 
   function shade(hex, amt) {
@@ -13,6 +16,7 @@
     const r = c((n >> 16) + amt), g = c(((n >> 8) & 255) + amt), b = c((n & 255) + amt);
     return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
   }
+  BB.shade = shade;
 
   const logo = (x, y, s) =>
     `<circle cx="${x}" cy="${y}" r="${14 * s}" fill="#d9434a"/><circle cx="${x}" cy="${y}" r="${10 * s}" fill="#ececec"/>` +
@@ -107,7 +111,7 @@
   // ---------- Hats ----------
   const HATS = {
     none: () => '',
-    headband: () => `<path d="M62 58 Q100 34 138 58" stroke="#2b2f36" stroke-width="7" fill="none" stroke-linecap="round"/>`,
+    headband: c => `<path d="M62 58 Q100 34 138 58" stroke="${c}" stroke-width="7" fill="none" stroke-linecap="round"/>`,
     party: () => `<path d="M72 46 Q70 16 100 18 Q130 16 128 46Z" fill="#4a505a"/><path d="M88 21 Q100 27 112 21" stroke="#3a3f47" stroke-width="3" fill="none"/>` +
       `<rect x="72" y="37" width="56" height="7" fill="#1f2227"/><path d="M60 46 Q100 38 140 46 Q138 53 100 50 Q62 53 60 46Z" fill="#3a3f47"/>`,
     cap: () => `<path d="M61 60 Q61 22 100 22 Q139 22 139 60Z" fill="#2b2f36"/><path d="M56 58 Q100 50 152 58 Q148 67 100 64 Q70 64 56 62Z" fill="#1c1f24"/><circle cx="100" cy="23" r="3.5" fill="#1c1f24"/>` + logo(100, 42, 0.45),
@@ -123,8 +127,8 @@
   // ---------- Accessories ----------
   const ACCESSORIES = {
     none: () => '',
-    glasses: () => `<g fill="rgba(255,255,255,.15)" stroke="${INK}" stroke-width="2.5"><rect x="76" y="63" width="20" height="15" rx="4"/><rect x="104" y="63" width="20" height="15" rx="4"/></g>` +
-      `<path d="M96 69 L104 69 M76 68 L63 66 M124 68 L137 66" stroke="${INK}" stroke-width="2.5"/>`,
+    glasses: c => `<g fill="rgba(255,255,255,.15)" stroke="${c}" stroke-width="2.5"><rect x="76" y="63" width="20" height="15" rx="4"/><rect x="104" y="63" width="20" height="15" rx="4"/></g>` +
+      `<path d="M96 69 L104 69 M76 68 L63 66 M124 68 L137 66" stroke="${c}" stroke-width="2.5"/>`,
     mustache: () => `<path d="M100 83 Q91 77 82 82 Q88 88 100 85.5 Q112 88 118 82 Q109 77 100 83Z" fill="#3a2416"/>`,
     eyepatch: () => `<path d="M62 60 L138 82" stroke="#111" stroke-width="2.5"/><ellipse cx="114" cy="71" rx="10" ry="9" fill="#111"/>`,
     sunglasses: () => `<rect x="73" y="63" width="24" height="14" rx="5" fill="#111"/><rect x="103" y="63" width="24" height="14" rx="5" fill="#111"/>` +
@@ -148,6 +152,83 @@
       `<circle cx="${m(54)}" cy="201" r="7" fill="${skin}"/>`;
   }
 
+  // ---------- Football kit, doing kick ups ----------
+  const TORSO = 'M66 128 Q66 115 84 113 L116 113 Q134 115 134 128 L136 204 L64 204Z';
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const isLight = hex => { const n = parseInt(hex.slice(1), 16); return ((n >> 16) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000 > 150; };
+  let clipCount = 0; // clip ids must be unique across every SVG on the page
+
+  const PATTERNS = {
+    plain: () => '',
+    stripes: c => [70, 90, 110, 130].map(x => `<rect x="${x}" y="110" width="10" height="100" fill="${c}"/>`).join(''),
+    hoops: c => [122, 144, 166, 188].map(y => `<rect x="60" y="${y}" width="80" height="11" fill="${c}"/>`).join(''),
+    sash: c => `<path d="M64 120 L80 112 L138 196 L124 208Z" fill="${c}"/>`,
+    halves: c => `<rect x="100" y="110" width="40" height="100" fill="${c}"/>`,
+    band: c => `<rect x="88" y="110" width="24" height="100" fill="${c}"/>`,
+    hband: c => `<rect x="60" y="146" width="80" height="18" fill="${c}"/>`,
+    check: c => {
+      let out = '';
+      for (let y = 112; y < 206; y += 12) for (let x = 64; x < 138; x += 12) {
+        if (((x - 64) / 12 + (y - 112) / 12) % 2 === 0) out += `<rect x="${x}" y="${y}" width="12" height="12" fill="${c}"/>`;
+      }
+      return out;
+    },
+  };
+
+  // Leg flicks up at the half-way point just as the ball drops onto the boot.
+  const KICK = `<animateTransform attributeName="transform" type="rotate" dur="1s" repeatCount="indefinite"
+    values="0 115 200;0 115 200;-40 115 200;0 115 200;0 115 200" keyTimes="0;.3;.5;.7;1"/>`;
+  const BALL = `<g><animateTransform attributeName="transform" type="translate" dur="1s" repeatCount="indefinite"
+      values="0 0;0 85;0 0" keyTimes="0;.5;1" calcMode="spline" keySplines=".55 0 1 .45;0 .55 .45 1"/>` +
+    `<g><animateTransform attributeName="transform" type="rotate" dur="1s" repeatCount="indefinite" values="0 158 150;360 158 150"/>` +
+    `<circle cx="158" cy="150" r="9" fill="#fafafa" stroke="#222" stroke-width="1.2"/>` +
+    `<path d="M158 146 L161.8 148.8 L160.4 153.2 L155.6 153.2 L154.2 148.8Z" fill="#222"/>` +
+    `<path d="M158 146 L158 141.5 M161.8 148.8 L166 147 M160.4 153.2 L163 157 M155.6 153.2 L153 157 M154.2 148.8 L150 147" stroke="#222" stroke-width="1"/>` +
+    `</g></g>`;
+
+  // Number 1 is the goalkeeper: a plain, long-sleeved kit in a colour that stands out from the team's.
+  const KEEPER_COLOURS = ['#1fa34a', '#f2c417', '#1a1a1a', '#e8672a', '#6d3fc0', '#e0457b'];
+  const rgb = hex => { const n = parseInt(hex.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+  const dist = (a, b) => Math.hypot(...rgb(a).map((v, i) => v - rgb(b)[i]));
+  function keeperKit(t) {
+    const shirt = KEEPER_COLOURS.slice().sort((a, b) =>
+      Math.min(dist(b, t.shirt), dist(b, t.shorts)) - Math.min(dist(a, t.shirt), dist(a, t.shorts)))[0];
+    const ink = isLight(shirt) ? '#1a1a1a' : '#ffffff';
+    return { shirt, shorts: shade(shirt, -35), socks: shirt, text: ink, trim: ink, pattern: 'plain', keeper: true };
+  }
+
+  function kitBody(k, skin) {
+    const t = Number(k.number) === 1 ? keeperKit(BB.TEAMS[k.team]) : BB.TEAMS[k.team];
+    const id = 'bbkit' + (++clipCount);
+    const leg = (x, side) => `<rect x="${x}" y="198" width="17" height="66" rx="6" fill="${skin}"/>` +
+      `<rect x="${x - 1}" y="232" width="19" height="32" rx="4" fill="${t.socks}" stroke="${shade(t.socks, -25)}" stroke-width="1"/>` +
+      (side < 0
+        ? `<path d="M70 266 Q70 260 84 260 L96 260 L98 272 L70 272Z" fill="#1a1a1a"/>`
+        : `<path d="M130 266 Q130 260 116 260 L104 260 L102 272 L130 272Z" fill="#1a1a1a"/>`) +
+      `<rect x="${x - 5}" y="196" width="27" height="30" rx="4" fill="${t.shorts}" stroke="${shade(t.shorts, -25)}" stroke-width="1"/>`;
+    const name = esc(String(k.shirtName || '').toUpperCase());
+    const fit = name.length * 5.6 > 62 ? ' textLength="62" lengthAdjust="spacingAndGlyphs"' : '';
+    const outline = t.pattern === 'plain' ? '' : ` stroke="${isLight(t.text) ? '#1a1a1a' : '#ffffff'}" stroke-width="1.4" paint-order="stroke"`;
+    return slim([
+      leg(77, -1),
+      `<g>${KICK}${leg(106, 1)}</g>`,
+      `<rect x="68" y="194" width="64" height="10" rx="3" fill="${t.shorts}"/>`,
+      `<rect x="92" y="100" width="16" height="18" fill="${shade(skin, -18)}"/>`,
+      `<clipPath id="${id}"><path d="${TORSO}"/></clipPath>`,
+      `<path d="${TORSO}" fill="${t.shirt}"/>`,
+      `<g clip-path="url(#${id})">${PATTERNS[t.pattern](t.alt)}</g>`,
+      `<path d="${TORSO}" fill="none" stroke="${shade(t.shirt, -30)}" stroke-width="1.2"/>`,
+      `<path d="M86 113 Q100 126 114 113" stroke="${t.trim || t.text}" stroke-width="3.5" fill="none"/>`,
+      name ? `<text x="100" y="146" font-family="Arial, sans-serif" font-weight="700" font-size="9" fill="${t.text}" text-anchor="middle"${fit}${outline.replace('1.4', '.7')}>${name}</text>` : '',
+      `<text x="100" y="186" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="34" fill="${t.text}" text-anchor="middle"${outline}>${esc(k.number)}</text>`,
+      arm(-1, t.keeper ? 'long' : 'short', t.sleeve || t.shirt, skin),
+      arm(1, t.keeper ? 'long' : 'short', t.sleeve || t.shirt, skin),
+      t.keeper ? [54, 146].map(x => `<rect x="${x - 9}" y="193" width="18" height="17" rx="6" fill="#f4f4f4" stroke="${t.shorts}" stroke-width="2.5"/>`).join('') : '',
+    ].join('')) +
+      // Ball stays round; shift it in so it still meets the narrowed boot at the top of the kick.
+      `<g transform="translate(${-58 * (1 - SLIM)} 0)">${BALL}</g>`;
+  }
+
   // Returns an SVG string. opts.head = true draws only the head (used on trick bullseyes and shop cards).
   BB.renderAvatar = function (a, opts) {
     opts = opts || {};
@@ -160,18 +241,23 @@
 
     if (hair.back) parts.push(headGroup(hair.back(hairC)));
 
-    if (!opts.head) {
+    const kit = !opts.head && BB.activeKit(a);
+    if (kit) {
+      parts.push(kitBody(kit, skin));
+    } else if (!opts.head) {
+      const body = [];
       if (o.pants) {
-        parts.push(`<rect x="72" y="198" width="25" height="70" rx="6" fill="${o.pants}"/><rect x="103" y="198" width="25" height="70" rx="6" fill="${o.pants}"/>`);
+        body.push(`<rect x="72" y="198" width="25" height="70" rx="6" fill="${o.pants}"/><rect x="103" y="198" width="25" height="70" rx="6" fill="${o.pants}"/>`);
       } else {
-        parts.push(`<rect x="77" y="198" width="17" height="70" rx="6" fill="${skin}"/><rect x="106" y="198" width="17" height="70" rx="6" fill="${skin}"/>`);
+        body.push(`<rect x="77" y="198" width="17" height="70" rx="6" fill="${skin}"/><rect x="106" y="198" width="17" height="70" rx="6" fill="${skin}"/>`);
       }
-      parts.push(`<path d="M70 266 Q70 260 84 260 L96 260 L98 272 L70 272Z" fill="${o.shoes}"/><path d="M130 266 Q130 260 116 260 L104 260 L102 272 L130 272Z" fill="${o.shoes}"/>`);
-      parts.push(`<rect x="92" y="100" width="16" height="18" fill="${shade(skin, -18)}"/>`);
-      parts.push(`<path d="M66 128 Q66 115 84 113 L116 113 Q134 115 134 128 L136 204 L64 204Z" fill="${o.top}" stroke="${shade(o.top, -20)}" stroke-width="1.2"/>`);
-      if (o.skirt) parts.push(o.skirt(o.top));
-      if (o.extra) parts.push(o.extra(o.top));
-      parts.push(arm(-1, o.sleeve, o.top, skin), arm(1, o.sleeve, o.top, skin));
+      body.push(`<path d="M70 266 Q70 260 84 260 L96 260 L98 272 L70 272Z" fill="${o.shoes}"/><path d="M130 266 Q130 260 116 260 L104 260 L102 272 L130 272Z" fill="${o.shoes}"/>`);
+      body.push(`<rect x="92" y="100" width="16" height="18" fill="${shade(skin, -18)}"/>`);
+      body.push(`<path d="M66 128 Q66 115 84 113 L116 113 Q134 115 134 128 L136 204 L64 204Z" fill="${o.top}" stroke="${shade(o.top, -20)}" stroke-width="1.2"/>`);
+      if (o.skirt) body.push(o.skirt(o.top));
+      if (o.extra) body.push(o.extra(o.top));
+      body.push(arm(-1, o.sleeve, o.top, skin), arm(1, o.sleeve, o.top, skin));
+      parts.push(slim(body.join('')));
     } else {
       parts.push(`<rect x="91" y="102" width="18" height="16" fill="${shade(skin, -18)}"/>`);
     }
@@ -183,8 +269,8 @@
       `<path d="M100 74 Q97 81 101 82.5" stroke="${shade(skin, -40)}" stroke-width="1.8" fill="none" stroke-linecap="round"/>`,
       (FACES[a.face] || FACES.smile)(),
       hair.front ? hair.front(hairC) : '',
-      BB.wornIn(a, 'accessory').map(id => (ACCESSORIES[id] || ACCESSORIES.none)()).join(''),
-      (HATS[a.hat] || HATS.none)(),
+      BB.wornIn(a, 'accessory').map(id => (ACCESSORIES[(BB.findItem('accessory', id) || {}).variantOf || id] || ACCESSORIES.none)(colorOf('accessory', id, INK))).join(''),
+      (HATS[(BB.findItem('hat', a.hat) || {}).variantOf || a.hat] || HATS.none)(colorOf('hat', a.hat)),
     ].join('');
     parts.push(headGroup(head));
 

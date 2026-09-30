@@ -4,7 +4,7 @@
   const S = () => BB.state;
 
   let selectedWorld = null;
-  let shopTab = 'hair';
+  let shopTab = 'gun';
   let setupGender = null;
   let msgTimer = 0;
 
@@ -87,8 +87,9 @@
   function renderHome() {
     const st = S();
     const diff = st.difficulty;
-    const unlocked = st.unlocked[diff];
-    if (!selectedWorld || selectedWorld > unlocked) selectedWorld = unlocked;
+    const progress = st.unlocked[diff];
+    const unlocked = BB.worldsUnlocked(st, diff);
+    if (!selectedWorld || selectedWorld > unlocked) selectedWorld = progress;
 
     $('#home-avatar').innerHTML = BB.renderAvatar(st.avatar);
     $('#home-name').textContent = st.profile.name;
@@ -103,10 +104,10 @@
     $('#world-list').innerHTML = BB.WORLDS.map((w, i) => {
       const n = i + 1;
       const locked = n > unlocked;
-      const cleared = n < unlocked || (n === BB.WORLDS.length && st.beaten[diff]);
+      const cleared = n < progress || (n === BB.WORLDS.length && st.beaten[diff]);
       return `<button class="world-card w${n} ${locked ? 'locked' : ''} ${n === selectedWorld ? 'active' : ''}" data-world="${n}" ${locked ? 'disabled' : ''}>
         <span class="world-num">${locked ? '—' : cleared ? '✓' : n}</span>
-        <span class="world-info"><b>${w.name}</b><small>Goal ${BB.goalFor(i, diff).toLocaleString()} pts · Reward ${w.reward.toLocaleString()} coins</small></span>
+        <span class="world-info"><b>${w.name}</b><small>Goal ${BB.goalFor(i, diff).toLocaleString()} pts · Reward ${BB.rewardFor(i, diff).toLocaleString()} coins</small></span>
       </button>`;
     }).join('');
 
@@ -122,10 +123,12 @@
       title: 'How to play',
       body: `
         <div class="help">
-          <div class="help-row"><span class="mini-target"></span><p><b>Tap or click bullseyes</b> before they disappear. Each one is <b>+1 point</b> and <b>+1 coin</b>.</p></div>
+          <div class="help-row"><span class="mini-target"></span><p><b>Paintball the bullseyes</b> before they disappear. Each one is <b>+1 point</b> and <b>+1 coin</b>.</p></div>
           <div class="help-row"><span class="mini-target trick"><span class="face"><img src="${BB.avatarDataUrl(S().avatar)}" alt=""></span></span><p><b>Decoys:</b> bullseyes with <b>your avatar's face</b> are tricks, so hitting one is <b>−1 point</b>. If you hit one with <b>0 points</b>, you go back to the home page.</p></div>
-          <p>Reach the goal to clear the world. Your score starts from 0 again in every new world. Clearing a world gives <b>100 coins</b>, and World 5 gives <b>1000</b>.</p>
-          <p>Spend coins in the <b>Avatar Shop</b> on hair, outfits, hats and more.</p>
+          <p><b>Computer:</b> click the world to start aiming, move the mouse to aim, click to shoot, right-click or Space to use the scope, Esc to pause.<br>
+          <b>Phone or tablet:</b> drag to aim, tap to shoot, and tap 🔭 to use the scope.</p>
+          <p>Reach the goal to clear the world. Your score starts from 0 again in every new world. Clearing a world gives <b>100 coins</b>, and World 5 gives <b>1000</b> (or <b>1,000,000</b> on Impossible).</p>
+          <p>Spend coins in the <b>Avatar Shop</b> on new paintball guns and paint colours (5 coins each, or 10,000 for Bronze, Silver and Gold), plus hair, outfits, hats and more.</p>
           <div class="table-wrap"><table><thead><tr><th>Points needed</th>${BB.WORLDS.map((w, i) => `<th>W${i + 1}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>
         </div>`,
       buttons: [{ label: 'Got it', primary: true }],
@@ -182,33 +185,97 @@
     BB.showScreen('shop');
   }
 
+  // Guns and paintballs are drawn on their own; everything else on the avatar.
+  const isGear = () => BB.CATEGORIES.find(c => c.key === shopTab).view === 'gear';
+  const picture = (a, opts) => (isGear() ? BB.renderGear(a, shopTab) : BB.renderAvatar(a, opts));
+
   function renderShop() {
     const st = S();
-    $('#shop-avatar').innerHTML = BB.renderAvatar(st.avatar);
+    $('#shop-avatar').innerHTML = isGear() ? BB.renderLoadout(st.avatar) : BB.renderAvatar(st.avatar);
     $('#shop-tabs').innerHTML = BB.CATEGORIES.map(c =>
       `<button class="tab ${c.key === shopTab ? 'active' : ''}" data-tab="${c.key}">${c.label}</button>`).join('');
 
-    const cat = BB.CATEGORIES.find(c => c.key === shopTab);
-    $('#shop-grid').innerHTML = BB.ITEMS[shopTab].map(item => {
-      const preview = BB.withItem(st.avatar, shopTab, item.id);
-      const owned = BB.isOwned(shopTab, item.id);
-      const equipped = BB.isWearing(st.avatar, shopTab, item.id);
-      let status;
-      if (equipped) status = '<span class="status equipped">Wearing</span>';
-      else if (owned) status = `<span class="status owned">${item.price === 0 ? 'Free' : 'Owned'}</span>`;
-      else status = coinTag(item.price);
-      const cls = ['item-card', equipped && 'equipped', !owned && st.coins < item.price && 'cant-afford'].filter(Boolean).join(' ');
-      return `<button class="${cls}" data-item="${item.id}">
-        <div class="item-preview">${BB.renderAvatar(preview, { head: cat.view === 'head' })}</div>
-        <b>${item.name}</b>${status}</button>`;
+    let group = null;
+    $('#shop-grid').innerHTML = BB.ITEMS[shopTab].filter(item => !item.variantOf).map(item => {
+      // Items with a `group` (e.g. Clubs / Countries) get a heading where each group starts.
+      const heading = item.group && item.group !== group ? `<h3 class="grid-heading">${item.group}</h3>` : '';
+      group = item.group || group;
+      // An item with colour variants shows the colour being worn, if any.
+      const wornVariant = BB.variantsOf(shopTab, item.id).find(v => BB.isWearing(st.avatar, shopTab, v.id));
+      return heading + itemCard(item, item.name, wornVariant ? st.avatar : null);
     }).join('');
     BB.refreshCoins();
   }
 
-  function chooseItem(id) {
+  function itemCard(item, label, preview) {
+    const st = S();
+    const cat = BB.CATEGORIES.find(c => c.key === shopTab);
+    preview = preview || BB.withItem(st.avatar, shopTab, item.id);
+    const owned = BB.isOwned(shopTab, item.id);
+    const equipped = preview === st.avatar || BB.isWearing(st.avatar, shopTab, item.id);
+    let status;
+    if (equipped) status = `<span class="status equipped">${isGear() ? 'Equipped' : 'Wearing'}</span>`;
+    else if (owned) status = `<span class="status owned">${item.price === 0 ? 'Free' : 'Owned'}</span>`;
+    else status = coinTag(item.price);
+    const cls = ['item-card', equipped && 'equipped', !owned && st.coins < item.price && 'cant-afford'].filter(Boolean).join(' ');
+    return `<button class="${cls}" data-item="${item.id}">
+      <div class="item-preview">${picture(preview, { head: cat.view === 'head' })}</div>
+      <b>${label}</b>${status}</button>`;
+  }
+
+  // Shows every colour of an item, like the shop grid, to pick one to wear.
+  function chooseVariant(item) {
+    BB.sfx.click();
+    BB.modal({
+      title: `${item.name} colours`,
+      body: `<div class="item-grid variant-grid">${BB.variantsOf(shopTab, item.id)
+        .map(v => itemCard(v, v.colorName || v.name)).join('')}</div>`,
+      buttons: [{ label: 'Close' }],
+    });
+    document.querySelectorAll('#modal-body [data-item]').forEach(el => el.addEventListener('click', () => {
+      BB.closeModal();
+      chooseItem(el.dataset.item, true);
+    }));
+  }
+
+  // Pick the name and number to put on a club or country shirt, then wear it.
+  function customiseKit(item) {
+    const st = S();
+    const a = st.avatar;
+    const withKit = (name, number) => Object.assign(BB.withItem(a, 'custom', item.id), { kitName: name, kitNumber: number });
+    const readName = () => $('#kit-name').value.trim().slice(0, 12);
+    const readNumber = () => Math.min(99, Math.max(1, parseInt($('#kit-number').value, 10) || 10));
+    const name = a.custom === item.id ? a.kitName : (a.kitName || st.profile.name);
+    const number = a.kitNumber || 10;
+    BB.sfx.click();
+    BB.modal({
+      title: `${escapeHtml(item.name)} shirt`,
+      body: `<div class="buy-preview" id="kit-preview">${BB.renderAvatar(withKit(name, number))}</div>
+        <div class="kit-fields">
+          <label class="field"><span>Name on shirt</span><input id="kit-name" maxlength="12" autocomplete="off" value="${escapeHtml(name || '')}"></label>
+          <label class="field"><span>Number</span><input id="kit-number" type="number" min="1" max="99" inputmode="numeric" value="${number}"></label>
+        </div>`,
+      buttons: [
+        { label: 'Wear it', primary: true, action: () => {
+          st.avatar = withKit(readName(), readNumber());
+          BB.save();
+          renderShop();
+        } },
+        { label: 'Cancel' },
+      ],
+    });
+    const update = () => { $('#kit-preview').innerHTML = BB.renderAvatar(withKit(readName(), readNumber())); };
+    $('#kit-name').addEventListener('input', update);
+    $('#kit-number').addEventListener('input', update);
+  }
+
+  function chooseItem(id, picked) {
     const st = S();
     const item = BB.findItem(shopTab, id);
     if (!item) return;
+
+    if (!picked && BB.variantsOf(shopTab, id).length > 1) return chooseVariant(item);
+    if (shopTab === 'custom' && id !== 'none') return customiseKit(item);
 
     if (BB.isOwned(shopTab, id)) {
       st.avatar = BB.toggleItem(st.avatar, shopTab, id);
@@ -230,10 +297,10 @@
 
     BB.modal({
       title: `Buy ${item.name}?`,
-      body: `<div class="buy-preview">${BB.renderAvatar(BB.withItem(st.avatar, shopTab, id))}</div>
+      body: `<div class="buy-preview${isGear() ? ' gear' : ''}">${picture(BB.withItem(st.avatar, shopTab, id))}</div>
         <p>Price: ${coinTag(item.price)}<br>You'll have <b>${(st.coins - item.price).toLocaleString()}</b> coins left.</p>`,
       buttons: [
-        { label: 'Buy & wear', primary: true, action: () => {
+        { label: isGear() ? 'Buy & equip' : 'Buy & wear', primary: true, action: () => {
           st.coins -= item.price;
           st.owned.push(shopTab + ':' + id);
           st.avatar = BB.withItem(st.avatar, shopTab, id);
@@ -303,7 +370,12 @@
       if (e.target === modal && modalDismissable) BB.closeModal();
     });
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && $('#screen-game').classList.contains('active') && modal.hidden) BB.pauseGame();
+      if (!$('#screen-game').classList.contains('active') || !modal.hidden) return;
+      if (e.key === 'Escape' || e.key === 'p') BB.pauseGame();
+      if (e.key === ' ') {
+        e.preventDefault(); // don't also press a focused button
+        if (!e.repeat) BB.toggleScope();
+      }
     });
 
     if (S().profile && S().avatar) {

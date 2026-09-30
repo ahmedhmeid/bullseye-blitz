@@ -363,6 +363,76 @@ h2 { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spac
     #0b0f1c;
 }
 
+/* ---------- 3D paintball view ---------- */
+.arena > canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.fx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+
+.crosshair {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 26px; height: 26px;
+  margin: -13px 0 0 -13px;
+  pointer-events: none;
+  background:
+    linear-gradient(#fff, #fff) center / 2px 8px no-repeat,
+    linear-gradient(#fff, #fff) center / 8px 2px no-repeat;
+  border: 2px solid rgba(255, 255, 255, .9);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .35), inset 0 0 0 1px rgba(0, 0, 0, .35);
+}
+
+/* Sniper scope: black all round a circle, with thin cross-hairs */
+.scope {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .12s;
+  background:
+    linear-gradient(#000, #000) center / 1.5px 100% no-repeat,
+    linear-gradient(#000, #000) center / 100% 1.5px no-repeat,
+    radial-gradient(circle closest-side, transparent 0 94%, #111 94.5% 96%, rgba(0, 0, 0, .96) 96.5%);
+}
+.scoped .scope { opacity: 1; }
+.scoped .crosshair { display: none; }
+
+.aim-hint {
+  position: absolute;
+  left: 50%; bottom: 14%;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: rgba(10, 12, 16, .72);
+  color: #fff;
+  text-align: center;
+  pointer-events: none;
+  width: max-content;
+  max-width: calc(100% - 32px);
+}
+.aim-hint b { font-size: 1.1rem; }
+.aim-hint span { font-size: .8rem; opacity: .8; }
+
+.touch-controls { display: none; }
+.touch .touch-controls {
+  display: flex; align-items: flex-end; gap: 12px;
+  position: absolute;
+  right: 16px; bottom: max(16px, env(safe-area-inset-bottom));
+}
+.touch-btn {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .7);
+  background: rgba(10, 12, 16, .55);
+  color: #fff;
+  font-size: 1.4rem;
+  touch-action: none;
+}
+.touch-btn.fire { width: 78px; height: 78px; font-size: 1rem; font-weight: 800; background: rgba(229, 72, 77, .8); }
+.touch-btn:active { transform: scale(.94); }
+
+.buy-preview.gear { width: 180px; aspect-ratio: 1; }
+
 .target {
   position: absolute;
   left: 0; top: 0;
@@ -486,6 +556,8 @@ h2 { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spac
 .item-card.cant-afford .price { color: #a0a6b0; }
 .item-preview { width: 100%; aspect-ratio: 1; background: var(--bg-2); border-radius: 8px; }
 .item-preview svg { width: 100%; height: 100%; display: block; }
+.grid-heading { grid-column: 1 / -1; margin: 6px 0 -2px; font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.kit-fields { display: grid; grid-template-columns: 1fr 90px; gap: 10px; margin-top: 10px; }
 .status { font-weight: 600; font-size: .78rem; }
 .status.equipped { color: var(--green); }
 .status.owned { color: var(--muted); }

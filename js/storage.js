@@ -45,7 +45,9 @@
 
   function isOwnedBy(st, cat, id) {
     const item = BB.findItem(cat, id);
-    return !!item && (item.price === 0 || st.owned.includes(cat + ':' + id));
+    if (!item) return false;
+    // Buying an item in any colour unlocks all its colours.
+    return item.price === 0 || BB.variantsOf(cat, item.variantOf || id).some(v => st.owned.includes(cat + ':' + v.id));
   }
 
   const newId = () => 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -96,6 +98,9 @@
   // Worlds cleared across every difficulty (0-20), used for the leaderboard.
   BB.worldsCleared = st => BB.DIFFICULTY_ORDER.reduce(
     (sum, d) => sum + (st.beaten[d] ? BB.WORLDS.length : st.unlocked[d] - 1), 0);
+
+  // Worlds playable on a difficulty. Beating Impossible opens every world everywhere.
+  BB.worldsUnlocked = (st, diff) => (st.beaten.impossible ? BB.WORLDS.length : st.unlocked[diff]);
 
   BB.createPlayer = function (name, gender) {
     const st = defaults();

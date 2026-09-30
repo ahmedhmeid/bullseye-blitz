@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#ffffff">
-  <meta name="description" content="Bullseye Blitz: tap the bullseyes, dodge the ones with your face on them, and clear all five worlds.">
+  <meta name="description" content="Bullseye Blitz: a 3D paintball sniper game. Splat the bullseyes, dodge the ones with your face on them, and clear all five worlds.">
   <title>Bullseye Blitz</title>
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -77,7 +77,17 @@
           <button class="icon-btn" id="btn-pause" aria-label="Pause">❚❚</button>
         </div>
       </div>
-      <div id="arena" class="arena"></div>
+      <div id="arena" class="arena">
+        <!-- The 3D view's canvas is added here by game.js. -->
+        <div id="fx" class="fx"></div>
+        <div class="scope" aria-hidden="true"></div>
+        <div class="crosshair" aria-hidden="true"></div>
+        <div id="aim-hint" class="aim-hint" hidden></div>
+        <div class="touch-controls">
+          <button class="touch-btn" id="btn-scope" aria-label="Scope">🔭</button>
+          <button class="touch-btn fire" id="btn-fire" aria-label="Shoot">Fire</button>
+        </div>
+      </div>
     </section>
 
     <!-- Avatar shop -->
@@ -109,6 +119,8 @@
   <script src="js/storage.js"></script>
   <script src="js/sound.js"></script>
   <script src="js/avatar.js"></script>
+  <script src="js/gear.js"></script>
+  <script src="js/vendor/three.min.js"></script>
   <script src="js/game.js"></script>
   <script src="js/ui.js"></script>
 </body>

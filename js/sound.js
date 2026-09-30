@@ -23,6 +23,8 @@
 
   BB.sfx = {
     click: () => tone(600, 0.06, 'square', 0.05),
+    shoot: () => { tone(220, 0.07, 'square', 0.07, 0.4); tone(90, 0.1, 'sine', 0.12, 0.6); },
+    splat: () => tone(140, 0.12, 'triangle', 0.08, 0.5),
     hit:   () => tone(880, 0.12, 'triangle', 0.14, 1.6),
     coin:  () => { tone(1319, 0.08, 'square', 0.08); tone(1976, 0.3, 'square', 0.08, 1, 0.07); },
     bad:   () => tone(240, 0.3, 'sawtooth', 0.1, 0.5),
